@@ -21,8 +21,30 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         port: ${{ secrets.SSH_PORT }}
         script: |
-          cd /var/www/deploy_web_dinamis
+          # 1. Masuk ke folder project (Pastiin path ini bener di VPS lo)
+          cd /var/www/deploy_web_dinamis || exit 1
+
+          # 2. Tarik kodingan terbaru dari GitHub
           git pull origin main
-          composer install --no-dev
+
+          # 3. Update library PHP
+          composer install --no-dev --optimize-autoloader
+
+          # 4. MEMBANGUN TAMPILAN (Sangat Penting!)
+          # Ini buat nge-compile Tailwind CSS lo biar muncul warna item & oranye-nya
+          npm install
+          npm run build
+
+          # 5. URUSAN DATABASE
           php artisan migrate --force
+
+          # 6. MEMBERSIHKAN CACHE (Wajib biar tampilan update)
+          # Ini buat maksa Laravel buang tampilan lama dan pake file blade baru lo
+          php artisan view:clear
+          php artisan config:cache
+          php artisan route:cache
           php artisan optimize
+
+          # 7. Beresin Permission (Biar gak error 500)
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 775 storage bootstrap/cache
